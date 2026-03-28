@@ -4,7 +4,7 @@ from aiogram.filters import Command
 import keyboards as kb
 
 user = Router()
-basket = []
+cart = []
 @user.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(text="Menu", reply_markup=kb.menu)
@@ -28,20 +28,25 @@ async def call_factorio(call: CallbackQuery):
 @user.callback_query(F.data == "Dishonored")
 async def call_dishonored(call: CallbackQuery):
     await call.answer()
-    await call.message.edit_text(text="Dishonored\n\nPrice: $10\nGenre: stealth / action\n\nAn immersive first-person stealth game.", reply_markup=kb.basket_add)
+    await call.message.edit_text(text="Dishonored\n\nPrice: $10\nGenre: stealth / action\n\nAn immersive first-person stealth game.", reply_markup=kb.product_menu("Dishonored"))
 
 @user.callback_query(F.data.startswith("add_"))
-async def cmd_basket_add(call: CallbackQuery) -> None: 
+async def cmd_cart_add(call: CallbackQuery) -> None: 
     product = call.data.replace("add_", "")
-    basket.append(product)
+    cart.append(product)
     await call.answer("Item has been added to your cart✅")
+    await call.message.edit_text(text="Catalog", reply_markup=kb.catalog)
 
-
-@user.callback_query(F.data == "Basket")
-async def cmd_basket(call: CallbackQuery) -> None:
+@user.callback_query(F.data == "Cart")
+async def cmd_cart(call: CallbackQuery) -> None:
     await call.answer()
-    if basket:
-        await call.message.answer(f"List of items in your cart: {"\n".join(basket)}")
+    if cart:  
+        await call.message.answer(f"List of items in your cart:\n- {"\n- ".join(cart)}")
     else:
         await call.message.answer("Your cart is empty😢")
 
+
+@user.callback_query(F.data == "Cabinet")
+async def cmd_cabinet(call: CallbackQuery) -> None:
+    await call.answer()
+    await call.message.answer(f"Cabinet\nUser: {call.from_user.first_name}\nID: {call.from_user.id}", reply_markup=kb.menu)
