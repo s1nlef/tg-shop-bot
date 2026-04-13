@@ -33,6 +33,14 @@ class CartItem(Base):
     user: Mapped["User"] = relationship(back_populates="cart_items")
     game: Mapped["Game"] = relationship()
 
+class Order(Base):
+    __tablename__ = "orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"))    
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"))    
+    price: Mapped[int] = mapped_column()    
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    
 async def async_main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -3,7 +3,8 @@ import logging
 import os
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
-from app.handlers.handlers import user
+from app.handlers.user import user
+from app.handlers.admin import admin
 from app.database.models import async_main
 
 
@@ -12,7 +13,7 @@ async def main():
     await async_main()
     bot = Bot(token=os.getenv("TOKEN"))
     dp = Dispatcher()
-    dp.include_router(user)
+    dp.include_routers(user, admin)
     await dp.start_polling(bot)
 
 
