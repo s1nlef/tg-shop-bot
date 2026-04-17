@@ -1,5 +1,5 @@
 from app.database.models import async_session
-from app.database.models import User, Game, CartItem, Order
+from app.database.models import User, Game, CartItem, Order, OrderItem
 from sqlalchemy import select, delete, update
 from app.handlers.admin import ADMINS_TG_ID
 import asyncio
@@ -70,19 +70,25 @@ async def create_order(tg_id):
         cart = await get_cart(tg_id=tg_id)
         games = await asyncio.gather(*(get_game(item.game_id) for item in cart))
             
-        game_id = [game.id for game in games]
         sum_price = sum([game.price for game in games])
 
-        order = Order(
-        tg_id=tg_id,
-        game_id=" ".join(map(str, game_id)),
-        price=sum_price
-        )
+        order = Order(tg_id=tg_id, price=sum_price)
         session.add(order)
+        await session.flush()
+        for  game in games:
+            session.add(OrderItem(
+                order_id=order.id,
+                game_id=game.id,
+                price=game.price
+            ))
         await session.commit()
-        await session.refresh(order)
         return order.id
 
 async def all_user_orders(tg_id):
     async with async_session() as session:
-        pass
+        return (await session.scalars(select(Order).where(Order.tg_id == tg_id).order_by(Order.created_at.desc()))).all()
+
+
+async def get_order_items(order_id):
+    async with async_session() as session:
+        return (await session.scalars(select(OrderItem).where(OrderItem.order_id == order_id))).all()
