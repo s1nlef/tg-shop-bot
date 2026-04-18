@@ -2,8 +2,13 @@ from sqlalchemy import BigInteger, String, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 from datetime import date, datetime
+from dotenv import load_dotenv
+import os
 
-engine = create_async_engine("sqlite+aiosqlite:///tg-shop.sqlite3")
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_async_engine(DATABASE_URL)
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -44,9 +49,9 @@ class Order(Base):
 class OrderItem(Base):
     __tablename__ = "orders_items"
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False)
-    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
-    price: Mapped[int] = mapped_column(ForeignKey("orders.price"), nullable=False)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"))
+    price: Mapped[int] = mapped_column()
 
 async def async_main():
     async with engine.begin() as conn:

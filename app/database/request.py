@@ -26,7 +26,6 @@ async def get_game(game_id):
     async with async_session() as session:
         return await session.scalar(select(Game).where(Game.id == game_id))
     
-# Изменения данных
   
 async def add_to_cart(tg_id, game_id):
     async with async_session() as session:
@@ -51,9 +50,9 @@ async def clean_cart(tg_id):
         await session.commit()
         return
 
-async def admin_change_balance(balance):
+async def admin_change_balance(tg_id, balance):
     async with async_session() as session:
-        admin = await session.scalar(select(User).where(User.tg_id == ADMINS_TG_ID))
+        admin = await session.scalar(select(User).where(User.tg_id == tg_id))
         admin.balance = balance
         await session.commit()
         return
@@ -92,3 +91,10 @@ async def all_user_orders(tg_id):
 async def get_order_items(order_id):
     async with async_session() as session:
         return (await session.scalars(select(OrderItem).where(OrderItem.order_id == order_id))).all()
+    
+
+async def add_game(name, genre, daterelease, description, price):
+    async with async_session() as session:
+        session.add(Game(name=name, genre=genre, daterelease=daterelease, description=description, price=price))
+        await session.commit()
+        return
