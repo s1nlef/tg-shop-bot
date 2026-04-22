@@ -14,7 +14,7 @@ async def menu() -> InlineKeyboardMarkup:
      )
 
 async def catalog_kb(page: int = 0) -> InlineKeyboardMarkup:
-    games = await rq.get_all_games()
+    games = await rq.get_all_games(page=page, per_page=GAMES_PER_PAGE)
 
     start = page * GAMES_PER_PAGE
     end = start + GAMES_PER_PAGE

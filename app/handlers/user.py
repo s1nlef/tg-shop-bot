@@ -43,7 +43,7 @@ async def call_game(call: CallbackQuery):
     game_id = int(call.data.replace("game_", ""))
     game = await rq.get_game(game_id=game_id)
     await call.answer()
-    await call.message.edit_text(text=f"{game.name}\n\nPrice: ${game.price}\nGenre: {game.genre}\n\n{game.description}", reply_markup= await kb.product_kb(game_id=game_id))
+    await call.message.edit_text(text=f"{game.name}\n\nTotal: ${game.price}\nGenre: {game.genre}\n\n{game.description}", reply_markup= await kb.product_kb(game_id=game_id))
 
 
 @user.callback_query(F.data.startswith("add_"))
@@ -63,12 +63,27 @@ async def cmd_cart(call: CallbackQuery, state: FSMContext) -> None:
     await call.answer()
     cart = await rq.get_cart(call.from_user.id)
     if cart:
-        games = await asyncio.gather(*(rq.get_game(item.game_id) for item in cart))
-        game_name = [game.name for game in games]
-        sum_price = sum([game.price for game in games])
-        await state.update_data(game_name=game_name, sum_price=sum_price)
+        game_ids = [item.game_id for item in cart]
+        games = await rq.get_games_by_ids(game_ids=game_ids)
+        games_map = {game.id: game for game in games}
+        total = sum(
+            games_map[item.game_id].price * item.quantity
+            for item in cart
+            if item.game_id in games_map
+        )
+        games_text = "\n".join(
+            f"{games_map[item.game_id].name} x{item.quantity} — {games_map[item.game_id].price * item.quantity}"
+            for item in cart
+            if item.game_id in games_map
+        )
+        order_table = {
+            "game": [game for game in games],
+            "quantity": [item.quantity for item in cart if item.game_id in games_map],
+            "total": total
+        }
+        await state.update_data(games_text = games_text, total = total, order_table = order_table)
         await state.set_state(Buy_State.confirmation)
-        await call.message.answer(text=f"List of items in your cart:\n{"\n".join(game_name)}\n\nTotal price: {sum_price}", reply_markup= await kb.cart_kb())
+        await call.message.answer(text=f"List of items in your cart:\n{games_text}\n\nTotal price: {total}", reply_markup= await kb.cart_kb())
     else:
         await call.message.answer(text="Your cart is empty😓")
 
@@ -77,35 +92,35 @@ async def cmd_cart(call: CallbackQuery, state: FSMContext) -> None:
 async def cmd_accept_buy(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await state.set_state(Buy_State.payment)
+    await call.message.edit_text(text="Are you confirming your purchase?", reply_markup= await kb.confirm_kb())
+
+@user.callback_query(F.data == "confirm_buy", Buy_State.payment)
+async def cmd_confgirm_buy(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    data = await state.get_data()
+    total = data["total"]
+    await state.set_state(Buy_State.receipt)
     data = await state.get_data()
     user_balance = await rq.check_user(call.from_user.id)
-    if data["sum_price"] <= user_balance.balance:
-        await call.message.edit_text(text="Are you confirming your purchase?", reply_markup= await kb.confirm_kb())
+    if data["total"] <= user_balance.balance:
+        await call.message.edit_text(text=f"Total sum: {total}$", reply_markup= await kb.payment_kb())
+        await rq.change_balance(call.from_user.id, total)
     else:
         await call.message.edit_text(text="You don't have enough funds😓", reply_markup= await kb.return_kb())
 
-@user.callback_query(F.data == "confirm_buy", Buy_State.payment)
-async def cmd_payment(call: CallbackQuery, state: FSMContext):
-    await call.answer()
-    data = await state.get_data()
-    sum_price = data["sum_price"]
-    await state.set_state(Buy_State.receipt)
-  
-    await call.message.edit_text(text=f"Total sum: {sum_price}$", reply_markup= await kb.payment_kb())
 
 @user.callback_query(F.data == "pay_now", Buy_State.receipt)
-async def cmd_payment(call: CallbackQuery, state: FSMContext):
+async def cmd_pay_now(call: CallbackQuery, state: FSMContext):
     await call.answer()
     data = await state.get_data()
     user_id = call.from_user.id
-    sum_price = data["sum_price"]
-    game_name = data["game_name"]
-    order_id = await rq.create_order(call.from_user.id)
-
+    total = data["total"]
+    games_text = data["games_text"]
+    order_id = await rq.create_order(tg_id=user_id, order_table=data["order_table"])
+    
     await rq.clean_cart(user_id)
-    await rq.change_balance(user_id, sum_price)
     await state.clear()
-    await call.message.edit_text(text=f"Receipt🧾\nThe payment was successful✅\nTotal sum: {sum_price}$\nId: {order_id}\nPurchased games:\n{"\n".join(game_name)}\nThank you for your purchase😊", reply_markup= await kb.return_kb())
+    await call.message.edit_text(text=f"Receipt🧾\nThe payment was successful✅\nTotal sum: {total}$\nId: {order_id}\nPurchased games:\n{"".join(games_text)}\nThank you for your purchase😊", reply_markup= await kb.return_kb())
 
 
 @user.callback_query(F.data == "history")
@@ -118,15 +133,22 @@ async def cmd_history(call: CallbackQuery):
         return
 
     text = "📜 Order History:\n\n"
-
     for order in orders:
         items = await rq.get_order_items(order.id)
-        games = await asyncio.gather(*(rq.get_game(item.game_id) for item in items))
-        game_names = ", ".join(game.name for game in games)
+        games = await rq.get_games_by_ids(game_ids=[item.game_id for item in items])
+        games_map = {game.id: game for game in games}
+        games_text = "\n".join(
+            f"{games_map[item.game_id].name} x{item.quantity} — {games_map[item.game_id].price * item.quantity}"
+            for item in items 
+            if item.game_id in games_map
+        )
+        print(items)
+        print(games)
+        print(games_map)
         text += (
             f"Order #{order.id}\n"
-            f"Games: {game_names}\n"
-            f"Price: {order.price}\n"
-            f"Date: {order.created_at.strftime("%d.%m.%Y %H:%M:%S")}\n\n"
-        )
+            f"Games: \n{games_text}\n"
+            f"Total: {order.price}\n"
+            f"Date: {order.created_at.strftime('%d.%m.%Y %H:%M:%S')}\n\n"
+            )
     await call.message.answer(text)

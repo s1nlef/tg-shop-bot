@@ -1,7 +1,6 @@
 from app.database.models import async_session
 from app.database.models import User, Game, CartItem, Order, OrderItem
 from sqlalchemy import select, delete, update
-from app.handlers.admin import ADMINS_TG_ID
 import asyncio
 
 # Поиск/вывод данных
@@ -16,27 +15,31 @@ async def check_user(tg_id):
     async with async_session() as session:
         return await session.scalar(select(User).where(User.tg_id == tg_id))
 
-        
-
-async def get_all_games():
+async def get_all_games(page: int, per_page: int = 5):
     async with async_session() as session:
-        return (await session.scalars(select(Game))).all()
+        return (await session.scalars(select(Game).limit(per_page).offset(page * per_page))).all()
     
-async def get_game(game_id):
+async def get_game(game_id: int):
     async with async_session() as session:
         return await session.scalar(select(Game).where(Game.id == game_id))
     
-  
+async def get_games_by_ids(game_ids: list[int]):
+    async with async_session() as session:
+        return (await session.scalars(select(Game).where(Game.id.in_(game_ids)))).all()
+
 async def add_to_cart(tg_id, game_id):
     async with async_session() as session:
-        session.add(CartItem(tg_id=tg_id, game_id=game_id))
+        cart = await session.scalar(select(CartItem).where(CartItem.tg_id == tg_id, CartItem.game_id == game_id))
+        if cart:
+            cart.quantity += 1
+        else:
+            session.add(CartItem(tg_id=tg_id, game_id=game_id))
         await session.commit()
         return  
 
 async def get_cart(tg_id):
     async with async_session() as session:
-        cart = (await session.scalars(select(CartItem).where(CartItem.tg_id==tg_id))).all()
-        return cart
+        return (await session.scalars(select(CartItem).where(CartItem.tg_id==tg_id))).all()
     
 async def remove_from_cart(tg_id, game_id):
     async with async_session() as session:
@@ -64,21 +67,20 @@ async def change_balance(tg_id, total_sum):
         await session.commit()
         return
 
-async def create_order(tg_id):
-    async with async_session() as session:
-        cart = await get_cart(tg_id=tg_id)
-        games = await asyncio.gather(*(get_game(item.game_id) for item in cart))
-            
-        sum_price = sum([game.price for game in games])
 
-        order = Order(tg_id=tg_id, price=sum_price)
+async def create_order(tg_id, order_table):
+    async with async_session() as session:
+        
+        print(order_table)
+        order = Order(tg_id = tg_id, price = order_table["total"])
         session.add(order)
         await session.flush()
-        for  game in games:
+        for game, qty in zip(order_table["game"], order_table["quantity"]):
             session.add(OrderItem(
-                order_id=order.id,
-                game_id=game.id,
-                price=game.price
+                order_id = order.id,
+                game_id = game.id,
+                quantity = qty,
+                price = game.price*qty
             ))
         await session.commit()
         return order.id

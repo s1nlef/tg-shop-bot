@@ -1,7 +1,7 @@
-from sqlalchemy import BigInteger, String, ForeignKey
+from sqlalchemy import BigInteger, String, ForeignKey, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from dotenv import load_dotenv
 import os
 
@@ -43,16 +43,17 @@ class Order(Base):
     __tablename__ = "orders"
     id: Mapped[int] = mapped_column(primary_key=True)
     tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"))    
-    price: Mapped[int] = mapped_column()    
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    price: Mapped[int] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), default="completed")    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    items: Mapped[list["OrderItem"]] = relationship(back_populates="order")
 
 class OrderItem(Base):
     __tablename__ = "orders_items"
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"))
+    quantity: Mapped[int] = mapped_column(default=1)
     price: Mapped[int] = mapped_column()
-
-async def async_main():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    order: Mapped["Order"] = relationship(back_populates=("items"))
+    game: Mapped["Game"] = relationship()
