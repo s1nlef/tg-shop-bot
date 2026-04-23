@@ -1,6 +1,6 @@
 from app.database.models import async_session
 from app.database.models import User, Game, CartItem, Order, OrderItem
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, func
 import asyncio
 
 # Поиск/вывод данных
@@ -22,7 +22,11 @@ async def get_all_games(page: int, per_page: int = 5):
 async def get_game(game_id: int):
     async with async_session() as session:
         return await session.scalar(select(Game).where(Game.id == game_id))
-    
+
+async def get_games_count() -> int:
+    async with async_session() as session:
+        return await session.scalar(select(func.count(Game.id)))
+  
 async def get_games_by_ids(game_ids: list[int]):
     async with async_session() as session:
         return (await session.scalars(select(Game).where(Game.id.in_(game_ids)))).all()

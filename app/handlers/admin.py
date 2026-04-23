@@ -29,7 +29,7 @@ class Add_Game_Status(StatesGroup):
     price = State()
 
 admin.message.filter(IsAdmin())
-
+admin.callback_query.filter(IsAdmin())
 @admin.message(Command("admin"))
 async def cmd_admin(message: Message, state: FSMContext):
     await state.clear()

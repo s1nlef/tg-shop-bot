@@ -15,25 +15,23 @@ async def menu() -> InlineKeyboardMarkup:
 
 async def catalog_kb(page: int = 0) -> InlineKeyboardMarkup:
     games = await rq.get_all_games(page=page, per_page=GAMES_PER_PAGE)
+    total_count = await rq.get_games_count()
 
-    start = page * GAMES_PER_PAGE
-    end = start + GAMES_PER_PAGE
-    page_games = games[start:end]
     keyboard = [
-            [InlineKeyboardButton(text=game.name, callback_data=f"game_{game.id}")]
-            for game in page_games
-        ]
+        [InlineKeyboardButton(text=game.name, callback_data=f"game_{game.id}")]
+        for game in games
+    ]
+
     nav = []
     if page > 0:
-        nav.append(InlineKeyboardButton(text="◀️", callback_data=f"catalog_page_{page-1}"))
-    if end < len(games):
-        nav.append(InlineKeyboardButton(text="▶️", callback_data=f"catalog_page_{page+1}"))
+        nav.append(InlineKeyboardButton(text="◀️", callback_data=f"catalog_page_{page - 1}"))
+    if (page + 1) * GAMES_PER_PAGE < total_count:
+        nav.append(InlineKeyboardButton(text="▶️", callback_data=f"catalog_page_{page + 1}"))
     if nav:
         keyboard.append(nav)
-    
+
     keyboard.append([InlineKeyboardButton(text="Back⬅️", callback_data="menu")])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
-
 
 async def product_kb(game_id) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup (
