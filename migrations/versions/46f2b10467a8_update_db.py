@@ -1,8 +1,8 @@
-"""init
+"""update db
 
-Revision ID: 2a4fdc1668a6
+Revision ID: 46f2b10467a8
 Revises: 
-Create Date: 2026-04-17 18:18:33.555465
+Create Date: 2026-04-23 22:32:14.044103
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '2a4fdc1668a6'
+revision: str = '46f2b10467a8'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -50,7 +50,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('tg_id', sa.BigInteger(), nullable=False),
     sa.Column('price', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['tg_id'], ['users.tg_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -58,6 +59,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('game_id', sa.Integer(), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
     sa.Column('price', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['game_id'], ['games.id'], ),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
