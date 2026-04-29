@@ -152,7 +152,7 @@ quantity        status          quantity
 - [x] Stage 1 — DB foundation (SQLAlchemy, relations, pagination)
 - [x] Stage 2 — Full purchase flow (FSM, orders, balance)
 - [x] Stage 3 — PostgreSQL + Alembic migrations
-- [ ] Stage 4 — Docker deploy + VPS
+- [x] Stage 4 — Docker deploy + VPS
 - [ ] Game image support
 - [ ] Search and genre filter
 - [ ] Telegram Stars payment integration
