@@ -1,13 +1,4 @@
 services:
-  bot:
-    build:
-      context: .
-      network: host
-    env_file: .env
-    network_mode: host
-    depends_on:
-      db:
-        condition: service_healthy 
   db:
     image: postgres:16
     env_file: .env
@@ -23,5 +14,28 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       retries: 5
+
+  migrate:
+    build:
+      context: .
+      network: host
+    env_file: .env
+    network_mode: host
+    command: alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"  
+  
+  bot:
+    build:
+      context: .
+      network: host
+    env_file: .env
+    network_mode: host
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   postgres_data:
