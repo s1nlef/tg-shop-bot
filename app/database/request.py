@@ -20,18 +20,58 @@ async def check_user(tg_id):
         return await session.scalar(select(User).where(User.tg_id == tg_id))
 
 
-async def get_all_sneakers(page: int, per_page: int = 5):
+async def get_distinct_brands(page: int, per_page: int = 5):
     async with async_session() as session:
         return (
             await session.scalars(
-                select(Sneaker).limit(per_page).offset(page * per_page)
+                select(Sneaker.brand).distinct().limit(per_page).offset(page * per_page)
             )
         ).all()
 
 
-async def get_sneaker(sneaker_id: int):
+async def get_sneakers_filtered(
+    page: int = 0,
+    per_page: int = 5,
+    brand_name: str | None = None,
+    size: str | None = None,
+    price_max: int | None = None,
+):
     async with async_session() as session:
-        return await session.scalar(select(Sneaker).where(Sneaker.id == sneaker_id))
+        query = select(Sneaker)
+        if brand_name:
+            query = query.where(Sneaker.brand == brand_name)
+
+        if price_max:
+            query = query.where(Sneaker.price <= price_max)
+
+        if size:
+            # Нужен JOIN с SneakerSize
+            query = (
+                query.join(SneakerSize)
+                .where(SneakerSize.size == size)
+                .where(SneakerSize.stock > 0)  # только в наличии
+            )
+        query = query.limit(per_page).offset(page * per_page)
+        return (await session.scalars(query)).all()
+
+
+async def get_all_sneakers(page: int, per_page: int = 5, brand_name: str = ""):
+    async with async_session() as session:
+        return (
+            await session.scalars(
+                select(Sneaker)
+                .where(Sneaker.brand == brand_name)
+                .limit(per_page)
+                .offset(page * per_page)
+            )
+        ).all()
+
+
+async def get_sneaker(sneaker_model: str):
+    async with async_session() as session:
+        return await session.scalar(
+            select(Sneaker).where(Sneaker.model == sneaker_model)
+        )
 
 
 async def get_sneakers_count() -> int:
@@ -46,17 +86,20 @@ async def get_sneakers_by_ids(sneaker_ids: list[int]):
         ).all()
 
 
-async def add_to_cart(tg_id, sneaker_id):
+async def add_to_cart(tg_id, sneaker_model):
     async with async_session() as session:
+        sneaker = await session.scalar(
+            select(Sneaker).where(Sneaker.model == sneaker_model)
+        )
         cart = await session.scalar(
             select(CartItem).where(
-                CartItem.tg_id == tg_id, CartItem.sneaker_id == sneaker_id
+                CartItem.tg_id == tg_id, CartItem.sneaker_id == sneaker.id
             )
         )
         if cart:
             cart.quantity += 1
         else:
-            session.add(CartItem(tg_id=tg_id, sneaker_id=sneaker_id))
+            session.add(CartItem(tg_id=tg_id, sneaker_id=sneaker.id))
         await session.commit()
 
 
@@ -91,26 +134,25 @@ async def admin_change_balance(tg_id, balance):
             await session.commit()
 
 
-async def change_balance(tg_id, total_sum):
+async def purchase(tg_id, order_table):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
-        if user:
-            user.balance -= total_sum
-            await session.commit()
+        if not user or user.balance < order_table["total"]:
+            return None
 
+        user.balance -= order_table["total"]
 
-async def create_order(tg_id, order_table):
-    async with async_session() as session:
         order = Order(tg_id=tg_id, price=order_table["total"])
         session.add(order)
         await session.flush()
-        for sneaker, qty in zip(order_table["sneaker"], order_table["quantity"]):
+        items = order_table["items"]
+        for sneaker in items:
             session.add(
                 OrderItem(
                     order_id=order.id,
-                    sneaker_id=sneaker.id,
-                    quantity=qty,
-                    price=sneaker.price * qty,
+                    sneaker_id=sneaker["sneaker_id"],
+                    quantity=sneaker["quantity"],
+                    price=sneaker["price"] * sneaker["quantity"],
                 )
             )
         await session.commit()
@@ -137,15 +179,17 @@ async def get_order_items(order_id):
         ).all()
 
 
-async def add_sneaker(brand, model, colorway, price, image_url):
+async def add_sneaker(brand, model, colorway, price, image_url, size_table):
     async with async_session() as session:
-        session.add(
-            Sneaker(
-                brand=brand,
-                model=model,
-                colorway=colorway,
-                price=int(price),
-                image_url=image_url,
-            )
+        sneaker = Sneaker(
+            brand=brand,
+            model=model,
+            colorway=colorway,
+            price=int(price),
+            image_url=image_url,
         )
+        session.add(sneaker)
+        await session.flush()
+        for size, stock in size_table.items():
+            session.add(SneakerSize(sneaker_id=sneaker.id, size=size, stock=int(stock)))
         await session.commit()
