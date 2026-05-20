@@ -14,9 +14,9 @@ async def menu() -> InlineKeyboardMarkup:
     )
 
 
-async def catalog_kb(page: int = 0) -> InlineKeyboardMarkup:
+async def brand_kb(page: int = 0) -> InlineKeyboardMarkup:
     sneakers = await rq.get_distinct_brands(page=page, per_page=SNEAKERS_PER_PAGE)
-    total_count = await rq.get_sneakers_count()
+    total_count = await rq.get_distinct_brands(page=None, per_page=None)
     keyboard = [
         [
             InlineKeyboardButton(
@@ -43,7 +43,7 @@ async def catalog_kb(page: int = 0) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-async def brand_product(
+async def sneaker_kb(
     page: int = 0,
     brand_name: str = "",
     size: str | None = None,
@@ -56,7 +56,7 @@ async def brand_product(
         size=size,
         price_max=price_max,
     )
-    total_count = await rq.get_sneakers_count()
+    total_count = await rq.get_sneakers_brand_count(brand=brand_name)
     keyboard = [
         [
             InlineKeyboardButton(
@@ -83,7 +83,9 @@ async def brand_product(
     if nav:
         keyboard.append(nav)
 
-    keyboard.append([InlineKeyboardButton(text="Back⬅️", callback_data="menu")])
+    keyboard.append(
+        [InlineKeyboardButton(text="Back⬅️", callback_data="catalog_page_0")]
+    )
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 

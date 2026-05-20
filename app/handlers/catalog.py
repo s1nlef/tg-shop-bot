@@ -28,7 +28,7 @@ async def call_catalog(call: CallbackQuery):
         media=InputMediaPhoto(
             caption="Catalog", media=FSInputFile("./image/catalog.png")
         ),
-        reply_markup=await kb.catalog_kb(0),
+        reply_markup=await kb.brand_kb(page=0),
     )
 
 
@@ -39,7 +39,7 @@ async def cmd_catalog_page(call: CallbackQuery) -> None:
         media=InputMediaPhoto(
             caption="Catalog", media=FSInputFile("./image/catalog.png")
         ),
-        reply_markup=await kb.catalog_kb(page),
+        reply_markup=await kb.brand_kb(page=page),
     )
 
 
@@ -49,17 +49,15 @@ async def cmd_brand_page(call: CallbackQuery) -> None:
     page = int(data[0])
     brand_name = data[1].replace("_", " ")
 
-    # Validate brand name
     valid_brand_name = await validate_brand_name(brand_name)
     if not valid_brand_name:
         await call.answer("❌ Unknown brand", show_alert=True)
         return
 
-    # Use safe filename (without spaces)
     safe_filename = valid_brand_name.replace(" ", "")
     await call.message.edit_media(
         media=InputMediaPhoto(media=FSInputFile(f"./image/{safe_filename}.png")),
-        reply_markup=await kb.brand_product(brand_name=brand_name, page=page),
+        reply_markup=await kb.sneaker_kb(brand_name=brand_name, page=page),
     )
 
 
@@ -76,11 +74,10 @@ async def call_brand(call: CallbackQuery, state: FSMContext):
     await state.set_state(FilterState.browsing)
     await state.update_data(brand=brand_name, size=None, price_max=None, page=0)
 
-    # Use safe filename (without spaces)
     safe_filename = valid_brand_name.replace(" ", "")
     await call.message.edit_media(
         media=InputMediaPhoto(media=FSInputFile(f"./image/{safe_filename}.png")),
-        reply_markup=await kb.brand_product(brand_name=brand_name),
+        reply_markup=await kb.sneaker_kb(brand_name=brand_name),
     )
 
 

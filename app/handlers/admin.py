@@ -151,7 +151,7 @@ async def sneaker_in_stock(call: CallbackQuery, state: FSMContext):
         return
 
     stock_data = {}
-    await state.update_data(stock_data=stock_data, currunt_idx=0)
+    await state.update_data(stock_data=stock_data, current_idx=0)
     await state.set_state(Add_Sneaker_Status.stock)
 
     first_size = sizes[0]
@@ -167,12 +167,12 @@ async def stock_input(message: Message, state: FSMContext):
     data = await state.get_data()
     sizes = data["sizes"]
     stock_data = data["stock_data"]
-    idx = data["currunt_idx"]
+    idx = data["current_idx"]
     stock_data[sizes[idx]] = int(message.text)
 
     idx += 1
     if idx < len(sizes):
-        await state.update_data(stock_data=stock_data, currunt_idx=idx)
+        await state.update_data(stock_data=stock_data, current_idx=idx)
         await message.answer(f"Enter stock for size {sizes[idx]}:")
     else:
         await state.update_data(stock_data=stock_data)

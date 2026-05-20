@@ -1,6 +1,6 @@
 from app.database.models import async_session
 from app.database.models import User, Sneaker, SneakerSize, CartItem, Order, OrderItem
-from sqlalchemy import select, delete, func
+from sqlalchemy import distinct, select, delete, func
 
 
 async def set_user(tg_id):
@@ -20,15 +20,6 @@ async def check_user(tg_id):
         return await session.scalar(select(User).where(User.tg_id == tg_id))
 
 
-async def get_distinct_brands(page: int, per_page: int = 5):
-    async with async_session() as session:
-        return (
-            await session.scalars(
-                select(Sneaker.brand).distinct().limit(per_page).offset(page * per_page)
-            )
-        ).all()
-
-
 async def get_sneakers_filtered(
     page: int = 0,
     per_page: int = 5,
@@ -45,14 +36,28 @@ async def get_sneakers_filtered(
             query = query.where(Sneaker.price <= price_max)
 
         if size:
-            # Нужен JOIN с SneakerSize
             query = (
                 query.join(SneakerSize)
                 .where(SneakerSize.size == size)
-                .where(SneakerSize.stock > 0)  # только в наличии
+                .where(SneakerSize.stock > 0)
             )
         query = query.limit(per_page).offset(page * per_page)
         return (await session.scalars(query)).all()
+
+
+async def get_distinct_brands(page: int | None, per_page: int | None = 5):
+    async with async_session() as session:
+        if page is not None and per_page is not None:
+            return (
+                await session.scalars(
+                    select(Sneaker.brand)
+                    .distinct()
+                    .limit(per_page)
+                    .offset(page * per_page)
+                )
+            ).all()
+        else:
+            return await session.scalar(select(func.count(Sneaker.brand.distinct())))
 
 
 async def get_all_sneakers(page: int, per_page: int = 5, brand_name: str = ""):
@@ -74,9 +79,11 @@ async def get_sneaker(sneaker_model: str):
         )
 
 
-async def get_sneakers_count() -> int:
+async def get_sneakers_brand_count(brand: str) -> int:
     async with async_session() as session:
-        return await session.scalar(select(func.count(Sneaker.id)))
+        return await session.scalar(
+            select(func.count(distinct(Sneaker.model))).where(Sneaker.brand == brand)
+        )
 
 
 async def get_sneakers_by_ids(sneaker_ids: list[int]):
@@ -139,7 +146,6 @@ async def purchase(tg_id, order_table):
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
         if not user or user.balance < order_table["total"]:
             return None
-
         user.balance -= order_table["total"]
 
         order = Order(tg_id=tg_id, price=order_table["total"])
