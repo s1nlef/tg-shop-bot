@@ -212,6 +212,15 @@ async def cmd_pay_now(call: CallbackQuery, state: FSMContext):
         f"Менеджер зв'яжеться з вами найближчим часом для підтвердження.",
         reply_markup=await kb.return_kb(),
     )
+    await call.message.answer(
+        text=f"🔔 Нове замовлення #{order_id}!\n\n"
+        f"Клієнт: @{call.from_user.username or 'без username'}\n"
+        f"ID: {user_id}\n"
+        f"Товари:\n{sneakers_text}\n\n"
+        f"Сума: {total} грн\n\n"
+        f"Зв'яжіться з клієнтом для підтвердження."
+        f"\n\nПриклад як виглядає для Менеджера",
+    )
 
     load_dotenv()
     admins_ids = [
