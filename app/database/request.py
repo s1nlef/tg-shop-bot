@@ -1,3 +1,4 @@
+from typing import Sized
 from app.database.models import async_session
 from app.database.models import User, Sneaker, SneakerSize, CartItem, Order, OrderItem
 from sqlalchemy import distinct, select, delete, func
@@ -72,11 +73,26 @@ async def get_all_sneakers(page: int, per_page: int = 5, brand_name: str = ""):
         ).all()
 
 
-async def get_sneaker(sneaker_model: str):
+async def get_sneaker(sneaker_model: str | None = None, sneaker_id: int | None = None):
     async with async_session() as session:
-        return await session.scalar(
-            select(Sneaker).where(Sneaker.model == sneaker_model)
-        )
+        if sneaker_id is not None:
+            return await session.scalar(
+                select(Sneaker).where(Sneaker.id == sneaker_id)
+            )
+        else:
+            return await session.scalar(
+                select(Sneaker).where(Sneaker.model == sneaker_model)
+            )
+
+
+async def get_sneaker_size(sneaker_id: int):
+    async with async_session() as session:
+        if sneaker_id:
+            return (
+                await session.scalars(
+                    select(SneakerSize).where(SneakerSize.sneaker_id == sneaker_id)
+                )
+            ).all()
 
 
 async def get_sneakers_brand_count(brand: str) -> int:
@@ -93,20 +109,17 @@ async def get_sneakers_by_ids(sneaker_ids: list[int]):
         ).all()
 
 
-async def add_to_cart(tg_id, sneaker_model):
+async def add_to_cart(tg_id, sneaker_id, size):
     async with async_session() as session:
-        sneaker = await session.scalar(
-            select(Sneaker).where(Sneaker.model == sneaker_model)
-        )
         cart = await session.scalar(
             select(CartItem).where(
-                CartItem.tg_id == tg_id, CartItem.sneaker_id == sneaker.id
+                CartItem.tg_id == tg_id, CartItem.sneaker_id == sneaker_id
             )
         )
         if cart:
             cart.quantity += 1
         else:
-            session.add(CartItem(tg_id=tg_id, sneaker_id=sneaker.id))
+            session.add(CartItem(tg_id=tg_id, sneaker_id=sneaker_id, size=size))
         await session.commit()
 
 
@@ -141,12 +154,11 @@ async def admin_change_balance(tg_id, balance):
             await session.commit()
 
 
-async def purchase(tg_id, order_table):
+async def create_order(tg_id, order_table):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
-        if not user or user.balance < order_table["total"]:
+        if not user:
             return None
-        user.balance -= order_table["total"]
 
         order = Order(tg_id=tg_id, price=order_table["total"])
         session.add(order)

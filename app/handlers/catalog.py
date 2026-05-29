@@ -17,7 +17,6 @@ async def validate_brand_name(brand_name: str) -> str | None:
     all_brands = await rq.get_distinct_brands(page=0, per_page=100)
     if brand_name in all_brands:
         return brand_name
-
     return None
 
 
@@ -26,7 +25,7 @@ async def call_catalog(call: CallbackQuery):
     await call.answer()
     await call.message.edit_media(
         media=InputMediaPhoto(
-            caption="Catalog", media=FSInputFile("./image/catalog.png")
+            caption="Каталог", media=FSInputFile("./image/catalog.png")
         ),
         reply_markup=await kb.brand_kb(page=0),
     )
@@ -37,7 +36,7 @@ async def cmd_catalog_page(call: CallbackQuery) -> None:
     page = int(call.data.replace("catalog_page_", ""))
     await call.message.edit_media(
         media=InputMediaPhoto(
-            caption="Catalog", media=FSInputFile("./image/catalog.png")
+            caption="Каталог", media=FSInputFile("./image/catalog.png")
         ),
         reply_markup=await kb.brand_kb(page=page),
     )
@@ -84,7 +83,7 @@ async def call_brand(call: CallbackQuery, state: FSMContext):
 @catalog.callback_query(F.data.startswith("model_"))
 async def call_sneaker(call: CallbackQuery):
     sneaker_model = call.data.replace("model_", "")
-    sneaker = await rq.get_sneaker(sneaker_model=sneaker_model)
+    sneaker = await rq.get_sneaker(sneaker_model=str(sneaker_model))
 
     if not sneaker:
         await call.answer("❌ Product not found", show_alert=True)
@@ -94,19 +93,21 @@ async def call_sneaker(call: CallbackQuery):
     await call.answer()
     await call.message.edit_media(
         media=InputMediaPhoto(
-            caption=f"{sneaker.brand} {sneaker.model} {sneaker.colorway}\n\nTotal: ${sneaker.price}",
+            caption=f"{sneaker.brand} {sneaker.model} {sneaker.colorway}\n\nЦіна: {sneaker.price} грн",
             media=BufferedInputFile(image_bytes, filename="model.jpg"),
         ),
-        reply_markup=await kb.product_kb(sneaker_model=sneaker_model.replace(" ", "_")),
+        reply_markup=await kb.model_kb(sneaker_id=sneaker.id),
     )
 
 
 @catalog.callback_query(F.data.startswith("add_"))
 async def cmd_cart_add(call: CallbackQuery) -> None:
-    sneaker_model = call.data.replace("add_", "").replace("_", " ")
-    await rq.add_to_cart(tg_id=call.from_user.id, sneaker_model=sneaker_model)
+    sneaker_data = call.data.replace("add_", "").split("_")
+    await rq.add_to_cart(
+        tg_id=call.from_user.id, size=sneaker_data[1], sneaker_id=int(sneaker_data[2])
+    )
     await call.answer()
-    await call.message.answer(text="Item has been added to cart✅")
+    await call.message.answer(text="Товар додано до кошика✅")
 
 
 # @catalog.callback_query(F.data == "filter")

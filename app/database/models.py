@@ -22,7 +22,6 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    balance: Mapped[int] = mapped_column(default=0)
     cart_items: Mapped[list["CartItem"]] = relationship(back_populates="user")
 
 
@@ -50,6 +49,7 @@ class CartItem(Base):
     tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"))
     sneaker_id: Mapped[int] = mapped_column(ForeignKey("sneakers.id"))
     quantity: Mapped[int] = mapped_column(default=1)
+    size: Mapped[str] = mapped_column(String(8))
     user: Mapped["User"] = relationship(back_populates="cart_items")
     sneaker: Mapped["Sneaker"] = relationship()
 

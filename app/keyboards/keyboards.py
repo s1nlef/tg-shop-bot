@@ -7,9 +7,9 @@ SNEAKERS_PER_PAGE = 5
 async def menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Catalog📇", callback_data="Catalog")],
-            [InlineKeyboardButton(text="Cabinet🗄️", callback_data="Cabinet")],
-            [InlineKeyboardButton(text="Cart🛒", callback_data="Cart")],
+            [InlineKeyboardButton(text="Каталог📇", callback_data="Catalog")],
+            [InlineKeyboardButton(text="Кабінет🗄️", callback_data="Cabinet")],
+            [InlineKeyboardButton(text="Кошик🛒", callback_data="Cart")],
         ]
     )
 
@@ -39,7 +39,7 @@ async def brand_kb(page: int = 0) -> InlineKeyboardMarkup:
     if nav:
         keyboard.append(nav)
 
-    keyboard.append([InlineKeyboardButton(text="Back⬅️", callback_data="menu")])
+    keyboard.append([InlineKeyboardButton(text="Назад⬅️", callback_data="menu")])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
@@ -71,20 +71,20 @@ async def sneaker_kb(
     if page > 0:
         nav.append(
             InlineKeyboardButton(
-                text="◀️", callback_data=f"brand_page_{brand_name}_{page - 1}"
+                text="◀️", callback_data=f"brand_page_{page - 1}_{brand_name}"
             )
         )
     if (page + 1) * SNEAKERS_PER_PAGE < total_count:
         nav.append(
             InlineKeyboardButton(
-                text="▶️", callback_data=f"brand_page_{brand_name}_{page + 1}"
+                text="▶️", callback_data=f"brand_page_{page + 1}_{brand_name}"
             )
         )
     if nav:
         keyboard.append(nav)
 
     keyboard.append(
-        [InlineKeyboardButton(text="Back⬅️", callback_data="catalog_page_0")]
+        [InlineKeyboardButton(text="Назад⬅️", callback_data="catalog_page_0")]
     )
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -104,32 +104,48 @@ async def catalog_filter_kb(
     ]
 
     reset = [
-        InlineKeyboardButton(text=f"❌ Reset filters", callback_data="filters_reset")
+        InlineKeyboardButton(text=f"❌ Скинути фільтри", callback_data="filters_reset")
     ]
 
-    show = [InlineKeyboardButton(text="Apply 🔍", callback_data="filter_apply")]
+    show = [InlineKeyboardButton(text="Застосувати 🔍", callback_data="filter_apply")]
 
     return InlineKeyboardMarkup(inline_keyboard=[brand_row, reset, show])
 
 
-async def product_kb(sneaker_model) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
+async def model_kb(sneaker_id: int) -> InlineKeyboardMarkup:
+    keyboard = []
+    row = []
+    sneaker = await rq.get_sneaker(sneaker_id=sneaker_id)
+    sneaker_size = await rq.get_sneaker_size(sneaker_id=sneaker_id)
+    sneaker_table = {
+        "size": [item.size for item in sneaker_size],
+        "stock": [item.stock for item in sneaker_size],
+    }
+    for size, stock in zip(sneaker_table["size"], sneaker_table["stock"]):
+        if stock > 0:
+            row.append(
                 InlineKeyboardButton(
-                    text="Add to cart", callback_data=f"add_{sneaker_model}"
+                    text=size, callback_data=f"add_{sneaker.model}_{size}_{sneaker.id}"
                 )
-            ],
-            [InlineKeyboardButton(text="Back⬅️", callback_data="Catalog")],
-        ]
+            )
+            if len(row) == 5:
+                keyboard.append(row)
+                row = []
+    if row:
+        keyboard.append(row)
+
+    keyboard.append(
+        [InlineKeyboardButton(text="Назад⬅️", callback_data=f"brand_{sneaker.brand}")]
     )
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 async def cart_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=f"Buy✅", callback_data="Buy")],
-            [InlineKeyboardButton(text=f"Back⬅️", callback_data="menu")],
+            [InlineKeyboardButton(text=f"📦 Оформити замовлення", callback_data="Buy")],
+            [InlineKeyboardButton(text=f"Назад⬅️", callback_data="menu")],
         ]
     )
 
@@ -138,8 +154,10 @@ async def confirm_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Accept", callback_data="confirm_buy"),
-                InlineKeyboardButton(text="❌ Deny", callback_data="menu"),
+                InlineKeyboardButton(
+                    text="✅ Підтвердити", callback_data="confirm_buy"
+                ),
+                InlineKeyboardButton(text="❌ Скасувати", callback_data="menu"),
             ]
         ]
     )
@@ -149,8 +167,8 @@ async def payment_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="💳 Pay", callback_data="pay_now"),
-                InlineKeyboardButton(text="↩️ Back", callback_data="menu"),
+                InlineKeyboardButton(text="📦 Оформити", callback_data="pay_now"),
+                InlineKeyboardButton(text="↩️ Назад", callback_data="menu"),
             ]
         ]
     )
@@ -158,14 +176,14 @@ async def payment_kb() -> InlineKeyboardMarkup:
 
 async def return_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="↩️ Back", callback_data="menu")]]
+        inline_keyboard=[[InlineKeyboardButton(text="↩️ Назад", callback_data="menu")]]
     )
 
 
 async def cabinet_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Order History", callback_data="history")],
-            [InlineKeyboardButton(text="↩️ Back", callback_data="menu")],
+            [InlineKeyboardButton(text="Історія замовлень", callback_data="history")],
+            [InlineKeyboardButton(text="↩️ Назад", callback_data="menu")],
         ]
     )
