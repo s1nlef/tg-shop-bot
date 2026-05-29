@@ -106,6 +106,72 @@ async def cmd_cart(call: CallbackQuery, state: FSMContext) -> None:
         await call.message.answer(text="Ваш кошик порожній😓")
 
 
+@purchase.callback_query(F.data == "cart_remove_item")
+async def cart_remove_items(call: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await call.answer()
+    await call.message.edit_reply_markup(
+        reply_markup=await kb.cart_remove_kb(cart_items=data["order_table"]["items"]),
+    )
+
+
+@purchase.callback_query(F.data.startswith("remove_"))
+async def remove_item(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+
+    # Извлекаем sneaker_id из callback_data
+    sneaker_id = int(call.data.replace("remove_", ""))
+
+    # Удаляем из БД
+    await rq.remove_from_cart(tg_id=call.from_user.id, sneaker_id=sneaker_id)
+
+    # Обновляем корзину
+    cart = await rq.get_cart(call.from_user.id)
+
+    if cart:
+        # Пересчитываем сумму и товары
+        sneaker_ids = [item.sneaker_id for item in cart]
+        sneakers = await rq.get_sneakers_by_ids(sneaker_ids=sneaker_ids)
+        sneakers_map = {sneaker.id: sneaker for sneaker in sneakers}
+        quantity = [item.quantity for item in cart if item.sneaker_id in sneakers_map]
+
+        total = sum(
+            sneakers_map[item.sneaker_id].price * item.quantity
+            for item in cart
+            if item.sneaker_id in sneakers_map
+        )
+
+        sneakers_text = "\n".join(
+            f"{sneakers_map[item.sneaker_id].brand} {sneakers_map[item.sneaker_id].model} {sneakers_map[item.sneaker_id].colorway} x{item.quantity} — {sneakers_map[item.sneaker_id].price * item.quantity} грн"
+            for item in cart
+            if item.sneaker_id in sneakers_map
+        )
+
+        order_table = {
+            "items": [
+                {"sneaker_id": s.id, "price": s.price, "quantity": q}
+                for s, q in zip(sneakers, quantity)
+            ],
+            "total": total,
+        }
+
+        # Обновляем state
+        await state.update_data(
+            sneakers_text=sneakers_text, total=total, order_table=order_table
+        )
+
+        # Обновляем сообщение
+        await call.message.edit_text(
+            text=f"Товари у вашому кошику:\n{sneakers_text}\n\nЗагальна сума: {total} грн",
+            reply_markup=await kb.cart_remove_kb(cart_items=order_table["items"]),
+        )
+    else:
+        # Корзина пустая
+        await call.message.edit_text(
+            text="Ваш кошик порожній😓", reply_markup=await kb.return_kb()
+        )
+
+
 @purchase.callback_query(F.data == "Buy", BuyState.confirmation)
 async def cmd_accept_buy(call: CallbackQuery, state: FSMContext):
     await call.answer()

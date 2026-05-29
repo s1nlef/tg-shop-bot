@@ -145,9 +145,30 @@ async def cart_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=f"📦 Оформити замовлення", callback_data="Buy")],
+            [
+                InlineKeyboardButton(
+                    text=f"❌ Видалити товар", callback_data="cart_remove_item"
+                )
+            ],
             [InlineKeyboardButton(text=f"Назад⬅️", callback_data="menu")],
         ]
     )
+
+
+async def cart_remove_kb(cart_items: dict) -> InlineKeyboardMarkup:
+    keyboard = []
+    for item in cart_items:
+        sneaker = await rq.get_sneaker(sneaker_id=item["sneaker_id"])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=f"❌ {sneaker.brand} {sneaker.model}",
+                    callback_data=f"remove_{item['sneaker_id']}",
+                )
+            ]
+        )
+    keyboard.append([InlineKeyboardButton(text="↩️ Назад", callback_data="Cart")])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 async def confirm_kb() -> InlineKeyboardMarkup:
