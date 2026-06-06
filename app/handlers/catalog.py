@@ -25,7 +25,7 @@ async def call_catalog(call: CallbackQuery):
     await call.answer()
     await call.message.edit_media(
         media=InputMediaPhoto(
-            caption="Каталог", media=FSInputFile("./image/catalog.png")
+            caption="Catalog", media=FSInputFile("./image/catalog.png")
         ),
         reply_markup=await kb.brand_kb(page=0),
     )
@@ -36,7 +36,7 @@ async def cmd_catalog_page(call: CallbackQuery) -> None:
     page = int(call.data.replace("catalog_page_", ""))
     await call.message.edit_media(
         media=InputMediaPhoto(
-            caption="Каталог", media=FSInputFile("./image/catalog.png")
+            caption="Catalog", media=FSInputFile("./image/catalog.png")
         ),
         reply_markup=await kb.brand_kb(page=page),
     )
@@ -93,7 +93,7 @@ async def call_sneaker(call: CallbackQuery):
     await call.answer()
     await call.message.edit_media(
         media=InputMediaPhoto(
-            caption=f"{sneaker.brand} {sneaker.model} {sneaker.colorway}\n\nЦіна: {sneaker.price} грн",
+            caption=f"{sneaker.brand} {sneaker.model} {sneaker.colorway}\n\nPrice: {sneaker.price} $",
             media=BufferedInputFile(image_bytes, filename="model.jpg"),
         ),
         reply_markup=await kb.model_kb(sneaker_id=sneaker.id),
@@ -107,7 +107,7 @@ async def cmd_cart_add(call: CallbackQuery) -> None:
         tg_id=call.from_user.id, size=sneaker_data[1], sneaker_id=int(sneaker_data[2])
     )
     await call.answer()
-    await call.message.answer(text="Товар додано до кошика✅")
+    await call.message.answer(text="Item added to cart✅")
 
 
 # @catalog.callback_query(F.data == "filter")

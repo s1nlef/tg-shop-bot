@@ -40,7 +40,7 @@ async def cmd_start(message: Message, state: FSMContext):
     await rq.set_user(message.from_user.id)
     await state.clear()
     await message.answer_photo(
-        caption="Меню",
+        caption="Menu",
         photo=FSInputFile("./image/menu.png"),
         reply_markup=await kb.menu(),
     )
@@ -51,7 +51,7 @@ async def cmd_menu(call: CallbackQuery, state: FSMContext) -> None:
     await call.answer()
     await state.clear()
     await call.message.answer_photo(
-        caption="Меню",
+        caption="Menu",
         photo=FSInputFile("./image/menu.png"),
         reply_markup=await kb.menu(),
     )
@@ -61,7 +61,7 @@ async def cmd_menu(call: CallbackQuery, state: FSMContext) -> None:
 async def cmd_cabinet(call: CallbackQuery) -> None:
     await call.answer()
     await call.message.answer(
-        text=f"Кабінет\nКористувач: {call.from_user.first_name}\nID: {call.from_user.id}",
+        text=f"Cabinet\nUser: {call.from_user.first_name}\nID: {call.from_user.id}",
         reply_markup=await kb.cabinet_kb(),
     )
 
@@ -97,13 +97,13 @@ async def cmd_cart(call: CallbackQuery, state: FSMContext) -> None:
         )
         await state.set_state(BuyState.confirmation)
         await call.message.answer(
-            text=f"Товари у вашому кошику:\n{sneakers_text}\n\nЗагальна сума: {
+            text=f"Items in your cart:\n{sneakers_text}\n\nTotal: {
                 total
-            } грн",
+            } $",
             reply_markup=await kb.cart_kb(),
         )
     else:
-        await call.message.answer(text="Ваш кошик порожній😓")
+        await call.message.answer(text="Your cart is empty😓")
 
 
 @purchase.callback_query(F.data == "cart_remove_item")
@@ -142,7 +142,7 @@ async def remove_item(call: CallbackQuery, state: FSMContext):
         )
 
         sneakers_text = "\n".join(
-            f"{sneakers_map[item.sneaker_id].brand} {sneakers_map[item.sneaker_id].model} {sneakers_map[item.sneaker_id].colorway} x{item.quantity} — {sneakers_map[item.sneaker_id].price * item.quantity} грн"
+            f"{sneakers_map[item.sneaker_id].brand} {sneakers_map[item.sneaker_id].model} {sneakers_map[item.sneaker_id].colorway} x{item.quantity} — {sneakers_map[item.sneaker_id].price * item.quantity} $"
             for item in cart
             if item.sneaker_id in sneakers_map
         )
@@ -162,13 +162,13 @@ async def remove_item(call: CallbackQuery, state: FSMContext):
 
         # Обновляем сообщение
         await call.message.edit_text(
-            text=f"Товари у вашому кошику:\n{sneakers_text}\n\nЗагальна сума: {total} грн",
+            text=f"Items in your cart:\n{sneakers_text}\n\nTotal: {total} $",
             reply_markup=await kb.cart_remove_kb(cart_items=order_table["items"]),
         )
     else:
         # Корзина пустая
         await call.message.edit_text(
-            text="Ваш кошик порожній😓", reply_markup=await kb.return_kb()
+            text="Your cart is empty😓", reply_markup=await kb.return_kb()
         )
 
 
@@ -177,7 +177,7 @@ async def cmd_accept_buy(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await state.set_state(BuyState.payment)
     await call.message.edit_text(
-        text="Підтверджуєте замовлення?", reply_markup=await kb.confirm_kb()
+        text="Confirm order?", reply_markup=await kb.confirm_kb()
     )
 
 
@@ -188,7 +188,7 @@ async def cmd_confirm_buy(call: CallbackQuery, state: FSMContext):
     total = data["total"]
     await state.set_state(BuyState.receipt)
     await call.message.edit_text(
-        text=f"Сума замовлення: {total} грн", reply_markup=await kb.payment_kb()
+        text=f"Order total: {total} $", reply_markup=await kb.payment_kb()
     )
 
 
@@ -205,21 +205,21 @@ async def cmd_pay_now(call: CallbackQuery, state: FSMContext):
     await state.clear()
 
     await call.message.edit_text(
-        text=f"✅ Ваше замовлення прийнято!\n\n"
-        f"Номер замовлення: #{order_id}\n"
-        f"Товари:\n{sneakers_text}\n\n"
-        f"Сума: {total} грн\n\n"
-        f"Менеджер зв'яжеться з вами найближчим часом для підтвердження.",
+        text=f"✅ Your order has been placed!\n\n"
+        f"Order number: #{order_id}\n"
+        f"Items:\n{sneakers_text}\n\n"
+        f"Total: {total} $\n\n"
+        f"A manager will contact you shortly for confirmation.",
         reply_markup=await kb.return_kb(),
     )
     await call.message.answer(
-        text=f"🔔 Нове замовлення #{order_id}!\n\n"
-        f"Клієнт: @{call.from_user.username or 'без username'}\n"
+        text=f"🔔 New order #{order_id}!\n\n"
+        f"Client: @{call.from_user.username or 'no username'}\n"
         f"ID: {user_id}\n"
-        f"Товари:\n{sneakers_text}\n\n"
-        f"Сума: {total} грн\n\n"
-        f"Зв'яжіться з клієнтом для підтвердження."
-        f"\n\nПриклад як виглядає для Менеджера",
+        f"Items:\n{sneakers_text}\n\n"
+        f"Total: {total} $\n\n"
+        f"Contact the client for confirmation."
+        f"\n\nExample of how it looks for Manager",
     )
 
     load_dotenv()
@@ -230,12 +230,12 @@ async def cmd_pay_now(call: CallbackQuery, state: FSMContext):
         try:
             await call.bot.send_message(
                 chat_id=admins_id,
-                text=f"🔔 Нове замовлення #{order_id}!\n\n"
-                f"Клієнт: @{call.from_user.username or 'без username'}\n"
+                text=f"🔔 New order #{order_id}!\n\n"
+                f"Client: @{call.from_user.username or 'no username'}\n"
                 f"ID: {user_id}\n"
-                f"Товари:\n{sneakers_text}\n\n"
-                f"Сума: {total} грн\n\n"
-                f"Зв'яжіться з клієнтом для підтвердження.",
+                f"Items:\n{sneakers_text}\n\n"
+                f"Total: {total} $\n\n"
+                f"Contact the client for confirmation.",
             )
         except Exception:
             pass
@@ -247,10 +247,10 @@ async def cmd_history(call: CallbackQuery):
     user_id = call.from_user.id
     orders = await rq.all_user_orders(user_id)
     if not orders:
-        await call.message.answer("У вас немає замовлень")
+        await call.message.answer("You have no orders")
         return
 
-    text = "📜 Історія замовлень:\n\n"
+    text = "📜 Order history:\n\n"
     for order in orders:
         items = await rq.get_order_items(order.id)
         sneakers = await rq.get_sneakers_by_ids(
@@ -258,14 +258,14 @@ async def cmd_history(call: CallbackQuery):
         )
         sneakers_map = {sneaker.id: sneaker for sneaker in sneakers}
         sneakers_text = "\n".join(
-            f"{sneakers_map[item.sneaker_id].brand} {sneakers_map[item.sneaker_id].model} {sneakers_map[item.sneaker_id].colorway} x{item.quantity} — {sneakers_map[item.sneaker_id].price * item.quantity} грн"
+            f"{sneakers_map[item.sneaker_id].brand} {sneakers_map[item.sneaker_id].model} {sneakers_map[item.sneaker_id].colorway} x{item.quantity} — {sneakers_map[item.sneaker_id].price * item.quantity} $"
             for item in items
             if item.sneaker_id in sneakers_map
         )
         text += (
-            f"Замовлення #{order.id}\n"
-            f"Товари: \n{sneakers_text}\n"
-            f"Сума: {order.price} грн\n"
-            f"Дата: {order.created_at.strftime('%d.%m.%Y %H:%M:%S')}\n\n"
+            f"Order #{order.id}\n"
+            f"Items: \n{sneakers_text}\n"
+            f"Total: {order.price} $\n"
+            f"Date: {order.created_at.strftime('%d.%m.%Y %H:%M:%S')}\n\n"
         )
     await call.message.answer(text)
