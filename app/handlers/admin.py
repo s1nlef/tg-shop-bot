@@ -1,10 +1,16 @@
 from aiogram import F, Router
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import (
+    FSInputFile,
+    Message,
+    CallbackQuery,
+    InputMediaPhoto,
+    BufferedInputFile,
+)
 from aiogram.filters import Command, BaseFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from app.handlers.catalog import ImageResize, validate_brand_name
 from dotenv import load_dotenv
-from app.handlers.purchase import ImageResize
 import app.database.request as rq
 import app.keyboards.admkeyboard as kb
 import os
@@ -28,6 +34,10 @@ class Change_Balance(StatesGroup):
     total = State()
 
 
+class FilterState(StatesGroup):
+    browsing = State()
+
+
 class Add_Sneaker_Status(StatesGroup):
     brand = State()
     model = State()
@@ -35,6 +45,14 @@ class Add_Sneaker_Status(StatesGroup):
     price = State()
     image_url = State()
     stock = State()
+
+
+class DeleteSneaker(StatesGroup):
+    confirm = State()
+
+
+class ChangeStockSneaker(StatesGroup):
+    changesize = State()
 
 
 admin.message.filter(IsAdmin())
@@ -207,4 +225,157 @@ async def accept_sneaker(call: CallbackQuery, state: FSMContext):
 @admin.callback_query(F.data == "reject_add_sneaker")
 async def reject_sneaker(call: CallbackQuery, state: FSMContext):
     await call.answer()
+    await state.clear()
+
+
+@admin.callback_query(F.data == "admin_catalog")
+async def sneaker_model_delete(call: CallbackQuery):
+    await call.answer()
+    await call.message.answer_photo(
+        photo=FSInputFile(path="./image/catalog.png"),
+        caption="Admin Catalog",
+        reply_markup=await kb.brand_kb(page=0),
+    )
+
+
+@admin.callback_query(F.data.startswith("admin_catalog_page_"))
+async def cmd_catalog_page(call: CallbackQuery) -> None:
+    page = int(call.data.replace("admin_catalog_page_", ""))
+    await call.message.edit_media(
+        media=InputMediaPhoto(
+            caption="Admin Catalog", media=FSInputFile("./image/catalog.png")
+        ),
+        reply_markup=await kb.brand_kb(page=page),
+    )
+
+
+@admin.callback_query(F.data.startswith("admin_brand_page_"))
+async def cmd_brand_page(call: CallbackQuery) -> None:
+    data = call.data.replace("admin_brand_page_", "").split("_", 1)
+    page = int(data[0])
+    brand_name = data[1].replace("_", " ")
+
+    valid_brand_name = await validate_brand_name(brand_name)
+    if not valid_brand_name:
+        await call.answer("❌ Unknown brand", show_alert=True)
+        return
+
+    safe_filename = valid_brand_name.replace(" ", "")
+    await call.message.edit_media(
+        media=InputMediaPhoto(media=FSInputFile(f"./image/{safe_filename}.png")),
+        reply_markup=await kb.sneaker_kb(brand_name=brand_name, page=page),
+    )
+
+
+@admin.callback_query(F.data.startswith("admin_brand_"))
+async def call_brand(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    brand_name = call.data.replace("admin_brand_", "").replace("_", " ")
+    valid_brand_name = await validate_brand_name(brand_name=brand_name)
+
+    if not valid_brand_name:
+        await call.answer("❌ Unknown brand", show_alert=True)
+        return
+
+    await state.set_state(FilterState.browsing)
+    await state.update_data(brand=brand_name, size=None, price_max=None, page=0)
+
+    safe_filename = valid_brand_name.replace(" ", "")
+    await call.message.edit_media(
+        media=InputMediaPhoto(media=FSInputFile(f"./image/{safe_filename}.png")),
+        reply_markup=await kb.sneaker_kb(brand_name=brand_name),
+    )
+
+
+@admin.callback_query(F.data.startswith("admin_model_"))
+async def call_sneaker(call: CallbackQuery):
+    sneaker_model = call.data.replace("admin_model_", "")
+    sneaker = await rq.get_sneaker(sneaker_model=str(sneaker_model))
+
+    if not sneaker:
+        await call.answer("❌ Product not found", show_alert=True)
+        return
+
+    image_bytes = await ImageResize(sneaker.image_url)
+    await call.answer()
+    await call.message.edit_media(
+        media=InputMediaPhoto(
+            caption=f"{sneaker.brand} {sneaker.model} {sneaker.colorway}\n\nPrice: {sneaker.price} $",
+            media=BufferedInputFile(image_bytes, filename="model.jpg"),
+        ),
+        reply_markup=await kb.model_kb(sneaker_id=sneaker.id),
+    )
+
+
+@admin.callback_query(F.data.startswith("delete_sneaker_"))
+async def processDeletion(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await state.set_state(DeleteSneaker.confirm)
+    sneaker_id = call.data.replace("delete_sneaker_", "")
+    sneaker = await rq.get_sneaker(sneaker_id=int(sneaker_id))
+    await state.set_data({"sneaker_id": sneaker_id})
+    await call.message.answer(
+        text=f"You confirm the deletion? \nModel: {sneaker.model}",
+        reply_markup=await kb.comfirm_delete_sneaker(),
+    )
+
+
+@admin.callback_query(F.data == "confirm_delete_sneaker", DeleteSneaker.confirm)
+async def deleteSneaker(call: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await rq.delete_sneaker(int(data["sneaker_id"]))
+    await call.message.answer(text="Model was deleted")
+    await state.clear()
+
+
+@admin.callback_query(F.data == "leave_sneaker", DeleteSneaker.confirm)
+async def leaveSneaker(call: CallbackQuery, state: FSMContext):
+    await call.answer(text="Sneaker keep")
+    await state.clear()
+
+
+@admin.callback_query(F.data.startswith("admin_change_size_"))
+async def changeStockSize(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    parts = call.data.replace("admin_change_size_", "").split("_")
+    size = parts[0]
+    sneaker_id = parts[1]
+    await state.set_state(ChangeStockSneaker.changesize)
+    await state.set_data(
+        {
+            "size": size,
+            "sneaker_id": sneaker_id,
+            "message_id": call.message.message_id,
+            "chat_id": call.message.chat.id,
+        }
+    )
+    await call.message.answer("Enter new stock:")
+
+
+@admin.message(ChangeStockSneaker.changesize)
+async def chooseStockSize(message: Message, state: FSMContext):
+    newstock = message.text
+    if not newstock.isdigit():
+        await message.answer(text="Enter a number")
+        return
+    data = await state.get_data()
+    sneaker_id = int(data["sneaker_id"])
+
+    await rq.changeStock(sneaker_id=sneaker_id, size=data["size"], stock=newstock)
+    sneaker = await rq.get_sneaker(sneaker_id=sneaker_id)
+
+    image_url = sneaker.image_url
+    image_bytes = await ImageResize(image_url)
+
+    await message.bot.edit_message_media(
+        chat_id=data["chat_id"],
+        message_id=data["message_id"],
+        media=InputMediaPhoto(
+            media=BufferedInputFile(image_bytes, filename="model.jpg"),
+            caption=f"{sneaker.brand} {sneaker.model} {sneaker.colorway}\n\nPrice: {sneaker.price} $",
+        ),
+        reply_markup=await kb.model_kb(sneaker_id=sneaker_id),
+    )
+
+    await message.answer("✅ Stock updated")
     await state.clear()

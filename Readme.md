@@ -11,7 +11,7 @@ A Telegram bot for selling sneakers, built with Python and aiogram 3. Features a
 - 💳 **Purchase flow** — FSM-based checkout: cart → confirm → pay → receipt
 - 📜 **Order history** — Full purchase history per user
 - 🗄️ **User cabinet** — Balance and personal info
-- 🔐 **Admin panel** — Add sneakers with sizes/stock, manage user balances
+- 🔐 **Admin panel** — Add/delete sneakers, update stock, manage user balances
 - 📏 **Size management** — Multiple sizes per sneaker with individual stock tracking
 - 🐘 **PostgreSQL** + **Alembic** migrations
 - 🐳 **Docker Compose** — One command to run the whole stack
@@ -143,8 +143,10 @@ tg-shop-bot/
 ```
 /admin → Admin Menu
           ├── Change balance → Enter new balance
-          └── Add sneaker → Brand → Model → Colorway → Price → Image URL
-                          → Select sizes → Enter stock per size → Confirm
+          ├── Add sneaker → Brand → Model → Colorway → Price → Image URL
+          │               → Select sizes → Enter stock per size → Confirm
+          ├── Update stock → Select sneaker → Select size → Enter new stock
+          └── Delete sneaker → Select sneaker → Confirm deletion
 ```
 
 ---
@@ -213,12 +215,12 @@ All services use `network_mode: host` and share the same `.env` file.
 - [x] Stage 3 — PostgreSQL + Alembic migrations
 - [x] Stage 4 — Docker deployment
 - [x] Stage 5 — Sneaker shop features (brands, sizes, stock)
-- [ ] Size selection before adding to cart
+- [x] Admin panel — Update stock and delete sneakers
+- [x] Size selection before adding to cart
+- [x] CI/CD (GitHub Actions)
 - [ ] Stock deduction on purchase
-- [ ] Telegram Stars payment integration
 - [ ] Search and filters (size, price)
 - [ ] Notifications ("your size is back in stock")
-- [ ] CI/CD (GitHub Actions)
 
 ---
 

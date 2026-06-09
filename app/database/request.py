@@ -1,7 +1,6 @@
-from typing import Sized
 from app.database.models import async_session
 from app.database.models import User, Sneaker, SneakerSize, CartItem, Order, OrderItem
-from sqlalchemy import distinct, select, delete, func
+from sqlalchemy import distinct, select, delete, func, update
 
 
 async def set_user(tg_id):
@@ -76,9 +75,7 @@ async def get_all_sneakers(page: int, per_page: int = 5, brand_name: str = ""):
 async def get_sneaker(sneaker_model: str | None = None, sneaker_id: int | None = None):
     async with async_session() as session:
         if sneaker_id is not None:
-            return await session.scalar(
-                select(Sneaker).where(Sneaker.id == sneaker_id)
-            )
+            return await session.scalar(select(Sneaker).where(Sneaker.id == sneaker_id))
         else:
             return await session.scalar(
                 select(Sneaker).where(Sneaker.model == sneaker_model)
@@ -107,6 +104,28 @@ async def get_sneakers_by_ids(sneaker_ids: list[int]):
         return (
             await session.scalars(select(Sneaker).where(Sneaker.id.in_(sneaker_ids)))
         ).all()
+
+
+async def delete_sneaker(sneaker_id: int):
+    async with async_session() as session:
+        await session.execute(
+            delete(SneakerSize).where(SneakerSize.sneaker_id == sneaker_id)
+        )
+
+        await session.flush()
+        await session.execute(delete(Sneaker).where(Sneaker.id == sneaker_id))
+        await session.commit()
+
+
+async def changeStock(sneaker_id: int, size: str, stock: int):
+    async with async_session() as session:
+        await session.execute(
+            update(SneakerSize)
+            .where(SneakerSize.sneaker_id == sneaker_id, SneakerSize.size == size)
+            .values(stock=int(stock))
+            .execution_options(synchronize_session="fetch")
+        )
+        await session.commit()
 
 
 async def add_to_cart(tg_id, sneaker_id, size):
