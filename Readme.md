@@ -1,252 +1,177 @@
-# 👟 TG Sneaker Shop Bot
+# Sneaker Shop Bot
 
-A Telegram bot for selling sneakers, built with Python and aiogram 3. Features a complete purchase flow with FSM-based state management, cart system, order history, and admin panel for managing inventory and user balances.
+Telegram bot for sneaker shop with cart system, order management, and admin panel. Built with aiogram 3, SQLAlchemy, and PostgreSQL.
 
----
+## Features
 
-## ✨ Features
+**User Side**
+- Browse catalog by brand with pagination
+- Filter by size and price
+- Shopping cart with quantity tracking
+- Order history and receipts
+- FSM-based checkout flow
 
-- 🛒 **Catalog** — Brand-based catalog with pagination and filtering
-- 🧺 **Cart** — Add/remove items, quantity tracking
-- 💳 **Purchase flow** — FSM-based checkout: cart → confirm → pay → receipt
-- 📜 **Order history** — Full purchase history per user
-- 🗄️ **User cabinet** — Balance and personal info
-- 🔐 **Admin panel** — Add/delete sneakers, update stock, manage user balances
-- 📏 **Size management** — Multiple sizes per sneaker with individual stock tracking
-- 🐘 **PostgreSQL** + **Alembic** migrations
-- 🐳 **Docker Compose** — One command to run the whole stack
-- 🔒 **Security** — Input validation, error handling, Path Traversal protection
+**Admin Panel**
+- Add/delete products
+- Update stock per size
+- Manage inventory
+- Track all orders
 
----
+**Technical**
+- Async architecture (aiogram 3 + SQLAlchemy 2)
+- PostgreSQL with Alembic migrations
+- Docker Compose deployment
+- Input validation and error handling
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Bot framework | [aiogram 3](https://docs.aiogram.dev) |
-| Language | Python 3.12+ |
-| Database | PostgreSQL 16 |
-| ORM | SQLAlchemy 2 (async) |
-| Migrations | Alembic |
-| Driver | asyncpg |
-| Deploy | Docker + Docker Compose |
+Python 3.12 • aiogram 3 • SQLAlchemy 2 • PostgreSQL 16 • Alembic • asyncpg • Docker
 
----
+## Setup
 
-## 🚀 Quick Start
+**Requirements:** Docker, or Python 3.12+ with PostgreSQL
 
-### 1. Clone the repo
+### With Docker
 
 ```bash
-git clone https://github.com/s1nlef/tg-shop-bot.git
-cd tg-shop-bot
-```
+git clone https://github.com/shwdabyss/SneakerShopBot.git
+cd SneakerShopBot
 
-### 2. Set up environment variables
-
-Create `.env` file:
-
-```env
-TOKEN=your_telegram_bot_token
-DATABASE_URL=postgresql+asyncpg://postgres:your_password@localhost:5432/tg_shop_db
+# Create .env file
+cat > .env << EOF
+TOKEN=your_bot_token
+DATABASE_URL=postgresql+asyncpg://postgres:your_password@db:5432/tg_shop_db
 POSTGRES_PASSWORD=your_password
 ADMINS_TG_IDS=your_telegram_id
-```
+EOF
 
-**Get your Telegram Bot Token:**
-1. Message [@BotFather](https://t.me/BotFather) on Telegram
-2. Send `/newbot` and follow instructions
-3. Copy the token to `.env`
-
-**Get your Telegram ID:**
-1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
-2. Copy your ID to `.env`
-
-### 3. Run with Docker Compose
-
-```bash
 docker compose up --build
 ```
 
-The bot starts automatically. Migrations run on first launch.
-
-### 4. Seed the database (optional)
+### Without Docker
 
 ```bash
-python seed.py
-```
+git clone https://github.com/shwdabyss/SneakerShopBot.git
+cd SneakerShopBot
 
-This adds 18 demo sneakers (Nike, Asics, New Balance, Converse) with Ukrainian sizes (36-46).
-
-### 5. Run without Docker (local dev)
-
-```bash
 # Install dependencies
 pip install -r requirements.txt
 
+# Create .env (update DATABASE_URL host to localhost)
+cat > .env << EOF
+TOKEN=your_bot_token
+DATABASE_URL=postgresql+asyncpg://postgres:your_password@localhost:5432/tg_shop_db
+POSTGRES_PASSWORD=your_password
+ADMINS_TG_IDS=your_telegram_id
+EOF
+
 # Run migrations
 alembic upgrade head
-
-# Seed database (optional)
-python seed.py
 
 # Start bot
 python main.py
 ```
 
----
+### Get Credentials
 
-## 📁 Project Structure
+- **Bot Token:** Message [@BotFather](https://t.me/BotFather) → `/newbot`
+- **Your Telegram ID:** Message [@userinfobot](https://t.me/userinfobot)
 
-```
-tg-shop-bot/
-├── app/
-│   ├── database/
-│   │   ├── models.py       # SQLAlchemy models
-│   │   └── request.py      # Database queries (DAL)
-│   ├── handlers/
-│   │   ├── purchase.py     # Purchase flow & main menu
-│   │   ├── catalog.py      # Product browsing & filtering
-│   │   └── admin.py        # Admin commands
-│   └── keyboards/
-│       ├── keyboards.py    # User keyboards
-│       └── admkeyboard.py  # Admin keyboards
-├── migrations/             # Alembic migrations
-├── image/                  # Brand images
-├── main.py                 # Bot entry point
-├── seed.py                 # Database seeding script
-├── .env                    # Environment variables (create this)
-├── Dockerfile
-└── docker-compose.yml
+### Seed Database (Optional)
+
+```bash
+python seed.py
 ```
 
----
+Adds 18 demo sneakers across Nike, Asics, New Balance, Converse with sizes 36-46.
 
-## 🤖 Bot Commands
-
-| Command | Description |
-|---|---|
-| `/start` | Open main menu |
-| `/admin` | Open admin panel *(admin only)* |
-
-### User Flow
+## Project Structure
 
 ```
-/start → Menu
-          ├── Catalog → [Brand] → [Product] → Add to cart
-          ├── Cart    → Confirm → Pay → Receipt
-          └── Cabinet → Order History
+app/
+├── database/
+│   ├── models.py         # SQLAlchemy models & database setup
+│   └── request.py        # Database queries (DAL)
+├── handlers/
+│   ├── purchase.py       # Purchase flow & main menu
+│   ├── catalog.py        # Product browsing & filtering
+│   └── admin.py          # Admin panel
+└── keyboards/
+    ├── keyboards.py      # User keyboards
+    └── admkeyboard.py    # Admin keyboards
+
+migrations/               # Alembic migrations
+image/                    # Brand images
+main.py                   # Bot entry point
+seed.py                   # Database seeding
+.env                      # Environment variables (create this)
+docker-compose.yml
 ```
 
-### Admin Flow
+## Usage
+
+**Commands**
+- `/start` — Open main menu
+- `/admin` — Admin panel (admin only)
+
+**User Flow**
 
 ```
-/admin → Admin Menu
-          ├── Change balance → Enter new balance
-          ├── Add sneaker → Brand → Model → Colorway → Price → Image URL
-          │               → Select sizes → Enter stock per size → Confirm
-          ├── Update stock → Select sneaker → Select size → Enter new stock
-          └── Delete sneaker → Select sneaker → Confirm deletion
+/start
+  ├─ Catalog → Brand → Product → Add to cart
+  ├─ Cart → Checkout → Payment → Receipt
+  └─ Cabinet → Order history
 ```
 
----
-
-## 🗄️ Database Schema
+**Admin Flow**
 
 ```
-users                sneakers              sneakers_size
-─────────            ──────────            ─────────────
-id                   id                    id
-tg_id (unique)       brand                 sneaker_id → sneakers
-balance              model                 size
-                     colorway              stock
-                     price
-                     image_url
-
-cart_items           orders                orders_items
-──────────           ──────────            ────────────
-id                   id                    id
-tg_id → users        tg_id → users         order_id → orders
-sneaker_id → sneakers price                sneaker_id → sneakers
-quantity             status                quantity
-                     created_at            price
+/admin
+  ├─ Add sneaker → Brand/Model/Price/Image → Sizes/Stock
+  ├─ Admin catalog → Update stock / Delete product
+  └─ Change balance
 ```
 
----
+## Database Schema
 
-## ⚙️ Environment Variables
+```
+users                 sneakers              sneakers_size
+─────────             ──────────            ─────────────
+id                    id                    id
+tg_id (unique)        brand                 sneaker_id → sneakers
+                      model                 size
+                      colorway              stock
+                      price
+                      image_url
+
+cart_items            orders                orders_items
+──────────            ──────────            ────────────
+id                    id                    id
+tg_id → users         tg_id → users         order_id → orders
+sneaker_id → sneakers price                 sneaker_id → sneakers
+quantity              status                quantity
+size                  created_at            price
+```
+
+## Environment Variables
 
 | Variable | Description | Example |
-|---|---|---|
-| `TOKEN` | Telegram Bot API token from @BotFather | `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11` |
-| `DATABASE_URL` | PostgreSQL async connection string | `postgresql+asyncpg://postgres:pass@localhost:5432/tg_shop_db` |
-| `POSTGRES_PASSWORD` | PostgreSQL password for Docker | `your_secure_password` |
-| `ADMINS_TG_IDS` | Comma-separated Telegram user IDs | `123456789,987654321` |
+|----------|-------------|---------|
+| `TOKEN` | Telegram bot token from @BotFather | `123456:ABC-DEF...` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://user:pass@host:5432/db` |
+| `POSTGRES_PASSWORD` | Database password | `your_secure_password` |
+| `ADMINS_TG_IDS` | Comma-separated admin IDs | `123456789,987654321` |
 
----
-
-## 🐳 Docker Architecture
-
-The `docker-compose.yml` defines three services:
-
-1. **db** — PostgreSQL 16 with health check
-2. **migrate** — Runs `alembic upgrade head` once, then exits
-3. **bot** — Starts polling after migrations complete
-
-All services use `network_mode: host` and share the same `.env` file.
-
----
-
-## 🔒 Security Features
-
-- ✅ Global error handler prevents stack trace exposure
-- ✅ Brand name validation against database (Path Traversal protection)
-- ✅ Input validation in admin panel (price, stock)
-- ✅ Product existence checks before display
-- ✅ `.env` in `.gitignore` (credentials never committed)
-
----
-
-## 📌 Roadmap
-
-- [x] Stage 0 — Bug fixes
-- [x] Stage 1 — Database foundation (SQLAlchemy, relations, pagination)
-- [x] Stage 2 — Full purchase flow (FSM, orders, balance)
-- [x] Stage 3 — PostgreSQL + Alembic migrations
-- [x] Stage 4 — Docker deployment
-- [x] Stage 5 — Sneaker shop features (brands, sizes, stock)
-- [x] Admin panel — Update stock and delete sneakers
-- [x] Size selection before adding to cart
-- [x] CI/CD (GitHub Actions)
-- [ ] Stock deduction on purchase
-- [ ] Search and filters (size, price)
-- [ ] Notifications ("your size is back in stock")
-
----
-
-## 🧪 Testing
+## Development
 
 ```bash
-# Test full flow locally:
-# 1. Start bot: python main.py
-# 2. Open Telegram and message your bot
-# 3. Test user flow: /start → Catalog → Brand → Product → Add to cart → Cart → Buy
-# 4. Test admin flow: /admin → Add sneaker (fill all fields)
-# 5. Check database: docker compose exec db psql -U postgres -d tg_shop_db
-```
-
----
-
-## 🛠️ Development
-
-```bash
-# Create new migration after model changes
+# Create migration after model changes
 alembic revision --autogenerate -m "description"
 
 # Apply migrations
 alembic upgrade head
 
-# Rollback one migration
+# Rollback
 alembic downgrade -1
 
 # Connect to database
@@ -256,16 +181,13 @@ docker compose exec db psql -U postgres -d tg_shop_db
 docker compose logs -f bot
 ```
 
----
+## Security
 
-## 👤 Author
+- Global error handler (no stack trace exposure)
+- Brand name validation (path traversal protection)
+- Input validation on admin panel
+- Environment variables in `.gitignore`
 
-**s1nlef** — [@s1nlef](https://github.com/s1nlef)
+## License
 
-> Built as a learning project evolving into a real product. Feedback and stars are welcome ⭐
-
----
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
+MIT License - see [LICENSE](LICENSE) file for details
